@@ -261,6 +261,23 @@ heroku container:release web -a your-app-name
 
 ---
 
-## 11. AI Tools Disclosure
+## AI Tools Disclosure
 
-In accordance with transparent engineering practices: AI coding assistants (Gemini / Antigravity) were utilized during development for rapid prototyping, API schema verification, unit test generation, and documentation drafting. All code, statistical calculations, domain assumptions, and test results were reviewed, debugged, and validated against official Elexon specifications.
+AI tools were used during development:
+
+- **Gemini (Antigravity)**: code generation for the backend, frontend,
+  tests, Docker/Vercel configuration and documentation drafts.
+- **Claude**: design review and domain guidance, including the decision
+  cutoff approach, half-hour alignment choice, metric selection, and
+  reviewing generated output for errors (e.g. correcting an unsupported
+  claim about embedded wind in an earlier draft).
+
+Human verification:
+
+- Forecast, actual and error values for sample slots (e.g. 27 Jan 2026)
+  were checked manually against the raw Elexon API responses.
+- Forecast selection was confirmed to use the latest publish time before
+  the 09:00 UTC cutoff (no later runs existed in the window).
+- Summary statistics were cross-checked for internal consistency
+  (e.g. bias-corrected MAE against RMSE and bias).
+- All design decisions documented above were reviewed and chosen by me.
