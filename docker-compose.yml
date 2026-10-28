@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: elexon-wind-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_PATH=/app/data/bmrs_cache.db
+      - CUTOFF_TIME=09:00
+      - DECISION_START_DATE=2026-01-01
+      - DECISION_END_DATE=2026-01-31
+      - DELIVERY_START_DATE=2026-01-02
+      - DELIVERY_END_DATE=2026-02-01
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: elexon-wind-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

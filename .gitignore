@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Node & Frontend build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Scratch scripts and files
+scratch/
+
+# Ensure SQLite database cache and CSV export are tracked and committed for Vercel/GitHub
+!data/
+!data/bmrs_cache.db
+!data/evaluated_slots_january_2026.csv
