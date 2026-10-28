@@ -1,12 +1,13 @@
 """FastAPI REST API application for Elexon BMRS Wind Backtest."""
 
 import os
+import io
+import csv
 from typing import Optional, List, Dict, Any
 from datetime import date, timedelta
-from fastapi import FastAPI, Query, HTTPException, status
+from fastapi import FastAPI, APIRouter, Query, HTTPException, status
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
 from backend.config import settings
 from backend.database import get_connection, init_db
@@ -24,7 +25,7 @@ from backend.metrics import (
     HistogramBin,
 )
 
-# Initialize database tables on startup
+# Initialize database tables if database does not already exist
 init_db()
 
 app = FastAPI(
@@ -33,7 +34,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Enable CORS for frontend applications
+# Enable CORS for cross-origin local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,8 +43,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Define an APIRouter for all endpoints
+router = APIRouter()
 
-@app.get("/api/export/csv", tags=["Export"])
+
+@router.get("/export/csv", tags=["Export"])
 def export_csv_data(
     cutoff: Optional[str] = Query(None, description="Cutoff time in HH:MM UTC (default: 09:00)"),
 ) -> Response:
@@ -51,9 +55,6 @@ def export_csv_data(
     Export all evaluated settlement slots (1,488 rows) to CSV format
     with start_time, forecast_mw, actual_mw, error_mw, publish_time, lead_time_hours.
     """
-    import io
-    import csv
-
     cutoff_val = cutoff or settings.cutoff_time
     start_d = date.fromisoformat(settings.delivery_start_date)
     end_d = date.fromisoformat(settings.delivery_end_date)
@@ -107,13 +108,13 @@ def export_csv_data(
     )
 
 
-@app.get("/api/health", tags=["System"])
+@router.get("/health", tags=["System"])
 def health_check() -> Dict[str, str]:
     """Check API operational health status."""
     return {"status": "ok", "service": "elexon-wind-backtest"}
 
 
-@app.get("/api/config", tags=["Configuration"])
+@router.get("/config", tags=["Configuration"])
 def get_config() -> Dict[str, Any]:
     """Retrieve current backtest parameters and operating date ranges."""
     return {
@@ -127,7 +128,7 @@ def get_config() -> Dict[str, Any]:
     }
 
 
-@app.get("/api/comparison", tags=["Backtest Evaluation"])
+@router.get("/comparison", tags=["Backtest Evaluation"])
 def get_day_comparison(
     date: str = Query(..., description="Delivery date (YYYY-MM-DD)", examples=["2026-01-02"]),
     cutoff: Optional[str] = Query(None, description="Cutoff time in HH:MM UTC (default: 09:00)", examples=["09:00"]),
@@ -137,7 +138,6 @@ def get_day_comparison(
     forecast, actual outturn, error, publishTime, and lead time.
     """
     try:
-        # Validate date format
         from datetime import date as dt_date
         dt_date.fromisoformat(date)
     except ValueError:
@@ -148,7 +148,7 @@ def get_day_comparison(
     return result.to_dict()
 
 
-@app.get("/api/metrics", tags=["Metrics"])
+@router.get("/metrics", tags=["Metrics"])
 def get_overall_metrics(
     cutoff: Optional[str] = Query(None, description="Cutoff time in HH:MM UTC (default: 09:00)"),
 ) -> Dict[str, Any]:
@@ -160,7 +160,7 @@ def get_overall_metrics(
     start_d = date.fromisoformat(settings.delivery_start_date)
     end_d = date.fromisoformat(settings.delivery_end_date)
 
-    conn = get_connection()
+    conn = get_connection(read_only=True)
     try:
         all_evaluated_slots = []
         total_slots = 0
@@ -177,7 +177,7 @@ def get_overall_metrics(
         conn.close()
 
 
-@app.get("/api/metrics/daily", tags=["Metrics"])
+@router.get("/metrics/daily", tags=["Metrics"])
 def get_daily_metrics(
     cutoff: Optional[str] = Query(None, description="Cutoff time in HH:MM UTC (default: 09:00)"),
 ) -> List[Dict[str, Any]]:
@@ -186,7 +186,7 @@ def get_daily_metrics(
     start_d = date.fromisoformat(settings.delivery_start_date)
     end_d = date.fromisoformat(settings.delivery_end_date)
 
-    conn = get_connection()
+    conn = get_connection(read_only=True)
     try:
         days_results = []
         cur_d = start_d
@@ -201,7 +201,7 @@ def get_daily_metrics(
         conn.close()
 
 
-@app.get("/api/metrics/by-hour", tags=["Metrics"])
+@router.get("/metrics/by-hour", tags=["Metrics"])
 def get_hourly_metrics(
     cutoff: Optional[str] = Query(None, description="Cutoff time in HH:MM UTC (default: 09:00)"),
 ) -> List[Dict[str, Any]]:
@@ -210,7 +210,7 @@ def get_hourly_metrics(
     start_d = date.fromisoformat(settings.delivery_start_date)
     end_d = date.fromisoformat(settings.delivery_end_date)
 
-    conn = get_connection()
+    conn = get_connection(read_only=True)
     try:
         all_evaluated_slots = []
         cur_d = start_d
@@ -225,7 +225,7 @@ def get_hourly_metrics(
         conn.close()
 
 
-@app.get("/api/metrics/horizon", tags=["Metrics"])
+@router.get("/metrics/horizon", tags=["Metrics"])
 def get_horizon_metrics() -> List[Dict[str, Any]]:
     """
     Horizon analysis: scores ALL forecasts published prior to delivery slots,
@@ -235,7 +235,7 @@ def get_horizon_metrics() -> List[Dict[str, Any]]:
     return [h.to_dict() for h in horizon]
 
 
-@app.get("/api/metrics/histogram", tags=["Metrics"])
+@router.get("/metrics/histogram", tags=["Metrics"])
 def get_histogram_metrics(
     cutoff: Optional[str] = Query(None, description="Cutoff time in HH:MM UTC (default: 09:00)"),
     bins: int = Query(16, ge=5, le=50, description="Number of histogram bins"),
@@ -245,7 +245,7 @@ def get_histogram_metrics(
     start_d = date.fromisoformat(settings.delivery_start_date)
     end_d = date.fromisoformat(settings.delivery_end_date)
 
-    conn = get_connection()
+    conn = get_connection(read_only=True)
     try:
         all_evaluated_slots = []
         cur_d = start_d
@@ -258,3 +258,10 @@ def get_histogram_metrics(
         return [b.to_dict() for b in hist]
     finally:
         conn.close()
+
+
+# Mount the router both with prefix="/api" AND at root "/"
+# This ensures that whether Vercel passes "/api/..." or strips the "/api" prefix,
+# both paths match and work flawlessly.
+app.include_router(router, prefix="/api")
+app.include_router(router)

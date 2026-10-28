@@ -28,6 +28,7 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+.vercel/
 
 # Scratch scripts and files
 scratch/
