@@ -1,6 +1,6 @@
 # Elexon BMRS Wind Forecast vs. Actual Outturn Backtest
 
-Live app: https://zphyr7.vercel.app | Repo: https://github.com/AkshathK05/zphyr7 | Video: <YouTube link — to be added>
+Live app: https://zphyr7.vercel.app | Repo: https://github.com/AkshathK05/zphyr7
 
 A full-stack quantitative web application built for a UK energy utility trading desk buying electricity in the **Great Britain (GB) Day-Ahead Market**.
 
