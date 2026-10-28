@@ -1,5 +1,7 @@
 # Elexon BMRS Wind Forecast vs. Actual Outturn Backtest
 
+Live app: https://zphyr7.vercel.app | Repo: https://github.com/AkshathK05/zphyr7 | Video: <YouTube link — to be added>
+
 A full-stack quantitative web application built for a UK energy utility trading desk buying electricity in the **Great Britain (GB) Day-Ahead Market**.
 
 ---
@@ -89,51 +91,67 @@ Across the 1,488 slots of January 2026, the backtest revealed a systematic posit
 ## 5. Repository & Directory Structure
 
 ```
+├── .gitignore                         # Git exclusion rules (whitelists data/bmrs_cache.db)
+├── Dockerfile.backend                 # Python 3.11 container build
+├── Dockerfile.frontend                # Vite build + Nginx container
+├── Procfile                           # Heroku process definition
+├── README.md                          # Project documentation
+├── requirements.txt                   # Lean production dependencies (FastAPI, NumPy, Pandas)
+├── requirements-dev.txt               # Testing dependencies (pytest, httpx)
+├── vercel.json                        # Vercel services mode routing and service configuration
+├── docker-compose.yml                 # Local multi-container orchestration
+├── api/
+│   └── index.py                       # Vercel entrypoint importing FastAPI app from backend.main
 ├── backend/
-│   ├── config.py              # Pydantic BaseSettings (date ranges, cutoff, db path, API URL)
-│   ├── database.py            # SQLite schema initialization and indexed upserts
-│   ├── fetcher.py             # Elexon BMRS API client with exponential backoff retries
-│   ├── processing.py          # Decision cutoff logic, no-lookahead filter, Option A join
-│   ├── metrics.py             # MAE, bias, RMSE, percentiles, hourly, daily, horizon analysis
-│   ├── main.py                # FastAPI REST API application
+│   ├── __init__.py
+│   ├── config.py                      # Pydantic BaseSettings (date ranges, cutoff, db path, API URL)
+│   ├── database.py                    # SQLite schema initialization and indexed upserts
+│   ├── fetcher.py                     # Elexon BMRS API client with exponential backoff retries
+│   ├── main.py                        # FastAPI REST API application
+│   ├── metrics.py                     # MAE, bias, RMSE, percentiles, hourly, daily, horizon analysis
+│   ├── processing.py                  # Decision cutoff logic, no-lookahead filter, Option A join
 │   ├── scripts/
-│   │   └── rebuild_cache.py   # CLI script to rebuild local SQLite cache from Elexon API
+│   │   ├── __init__.py
+│   │   ├── export_csv.py              # CLI script exporting all 1,488 evaluated slots to CSV
+│   │   └── rebuild_cache.py           # CLI script to rebuild local SQLite cache from Elexon API
 │   └── tests/
-│       ├── test_processing.py # Unit tests for cutoff boundaries & resolution mapping
-│       ├── test_metrics.py    # Unit tests for statistical metric computations & bias correction
-│       └── test_api.py        # Integration tests for FastAPI endpoints
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx            # Main interactive analytics dashboard (Recharts)
-│   │   ├── api.ts             # Typed API client
-│   │   ├── types.ts           # TypeScript interfaces
-│   │   ├── index.css          # Client-ready responsive styling
-│   │   └── main.tsx           # React entry point
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── nginx.conf             # Production container reverse-proxy config
+│       ├── __init__.py
+│       ├── test_api.py                # Integration tests for FastAPI endpoints
+│       ├── test_metrics.py            # Unit tests for statistical metric computations & bias correction
+│       └── test_processing.py         # Unit tests for cutoff boundaries & resolution mapping
 ├── data/
-│   └── bmrs_cache.db          # Local SQLite cache (1,488 actuals, 20,440 forecasts)
-├── Dockerfile.backend         # Multi-stage Python build
-├── Dockerfile.frontend        # Multi-stage Node/Nginx build
-├── docker-compose.yml         # One-command orchestration
-├── Procfile                   # Container/Heroku entry point
-├── requirements.txt           # Production runtime dependencies (FastAPI, NumPy, Pandas)
-├── requirements-dev.txt       # Development & testing dependencies (pytest)
-└── README.md
+│   ├── bmrs_cache.db                  # Local SQLite cache (1,488 actuals, 20,440 forecasts)
+│   └── evaluated_slots_january_2026.csv # Full CSV export of 1,488 evaluated backtest slots
+└── frontend/
+    ├── .env                           # Frontend environment configuration (VITE_API_BASE_URL=/api)
+    ├── .env.example
+    ├── index.html
+    ├── nginx.conf                     # Nginx reverse-proxy configuration for Docker
+    ├── package.json
+    ├── package-lock.json
+    ├── tsconfig.json
+    ├── tsconfig.node.json
+    ├── vite.config.ts
+    └── src/
+        ├── App.tsx                    # Main interactive analytics dashboard (Recharts)
+        ├── api.ts                     # Typed API client
+        ├── index.css                  # Responsive styling
+        ├── main.tsx                   # React entry point
+        ├── types.ts                   # TypeScript interfaces
+        └── vite-env.d.ts              # Vite client type definitions
 ```
 
 ---
 
 ## 6. How to Run Locally
 
-### Option A: Running with Docker (Recommended)
+### Run with Docker (Recommended)
 Prerequisites: Docker & Docker Compose.
 
 ```bash
 # Clone the repository
-git clone https://github.com/placeholder/elexon-wind-backtest.git
-cd elexon-wind-backtest
+git clone https://github.com/AkshathK05/zphyr7.git
+cd zphyr7
 
 # Build and start both services
 docker compose up --build
@@ -143,7 +161,7 @@ docker compose up --build
 
 ---
 
-### Option B: Running Without Docker
+### Run without Docker
 
 #### 1. Backend Setup (Python 3.10+)
 ```bash
@@ -223,41 +241,56 @@ All 4 bias-corrected metrics are calculated in a single unified function (`compu
 
 ---
 
-## 10. Deployment Architecture: All-in-One on Vercel
+## 10. Deployment Architecture: Vercel Services Mode
 
-As required, deployment is implemented cleanly on **Vercel** with **Heroku** as the containerized alternative:
+The application is deployed on **Vercel** using **Vercel services mode** (`vercel.json`), orchestrating both services under a single domain:
 
-### Primary Setup: Full-Stack Vercel Deployment (100% Free)
-Both the React frontend and FastAPI backend deploy together in a single Vercel project:
-* **Frontend:** React + Vite static build (`frontend/dist`) served from Vercel’s global Edge CDN.
-* **Backend:** FastAPI exposed as a Vercel Python Serverless Function via [api/index.py](api/index.py).
-* **Single-Domain Relative Routing:** The frontend uses relative `/api` paths (configured in `frontend/.env` and `vercel.json`). The frontend and API share the exact same domain, eliminating CORS entirely.
-* **Pre-Built SQLite Cache:** The 5.7 MB SQLite cache (`data/bmrs_cache.db`) is bundled directly in the deployment package and opened read-only. The serverless function never makes external HTTP calls to Elexon at request time.
-* **Cold-Start Performance:** Because the database is pre-indexed and only 5.7 MB, cold starts execute in **$< 400\text{ ms}$**, and warm responses execute in **$< 20\text{ ms}$**.
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "api": {
+      "root": ".",
+      "framework": "fastapi",
+      "entrypoint": "api/index.py"
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite",
+      "devCommand": "npx vite"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}
+```
+
+* **Frontend Service:** React + Vite served from `frontend` at `/`.
+* **API Service:** FastAPI exposed via `api/index.py` at `/api`.
+* **Path Preservation & Routing:** In Vercel services mode, rewrites route incoming `/api/...` requests to the `api` service with the `/api` prefix preserved. FastAPI mounts its routes directly with `prefix="/api"` (`app.include_router(router, prefix="/api")`), eliminating any duplicate root routing.
+* **Pre-Built SQLite Cache:** The 5.7 MB SQLite cache (`data/bmrs_cache.db`) is bundled directly in the deployed repository and opened read-only. The serverless function never makes external HTTP calls to Elexon at request time.
 * **Anonymous Access:** The application requires zero authentication or cookies; reviewers can open the deployed link in an incognito window and immediately interact with all charts and data.
 
-#### How to Deploy to Vercel:
-```bash
-# Install Vercel CLI (or connect the GitHub repository in the Vercel dashboard)
-npm i -g vercel
+### Alternative Setup: Heroku
+Heroku is a possible alternative but would need frontend serving added; the app is deployed on Vercel.
 
-# Deploy production build
-vercel --prod
-```
+* **Deployed Link:** https://zphyr7.vercel.app
 
-### Alternative Setup: Heroku Container Dyno
-If deploying as a standalone container:
-```bash
-# Log in to Heroku Container Registry
-heroku container:login
+---
 
-# Push and release backend container
-heroku container:push web -a your-app-name
-heroku container:release web -a your-app-name
-```
-* Uses [Procfile](Procfile) (`web: uvicorn backend.main:app --host 0.0.0.0 --port $PORT`). Note that Heroku requires an Eco dyno ($5/mo) as it no longer offers a free tier.
+## 11. Limitations & Next Steps
 
-* **Deployed Link (Placeholder):** `https://elexon-wind-backtest.vercel.app`
+### Current Limitations:
+1. **Single-Month In-Sample Evaluation:** The backtest covers 31 days (January 2026). While 1,488 half-hour slots provide high statistical power for that month, winter wind patterns and grid constraint conditions differ significantly from summer regimes.
+2. **09:00 UTC Cutoff Assumption:** The morning decision cutoff is assumed to be 09:00 UTC (configurable via query parameter or `.env`), reflecting typical day-ahead bidding prep; desks with earlier or later cutoffs will see slightly different lead times and forecast availability.
+3. **Curtailment Hypothesis Unverified:** The persistent positive bias (+1,747.9 MW) is hypothesized to stem from operational curtailment (NESO bid-offer acceptances turning down wind generators behind transmission constraints). Validating or disproving this requires granular Balancing Mechanism (BOA) data, which was out of scope for this backtest.
+
+### Next Steps for Production:
+1. **Multi-Year / Seasonal Backtesting:** Expand the cache to ingest a full 12–24 months of BMRS data to test buffer sizing across seasonal wind variability.
+2. **Live / Rolling Operational Mode:** Deploy a lightweight scheduled worker that polls BMRS at 08:30 UTC daily, selects the morning forecasts, and provides live trade sizing recommendations for Day D.
+3. **Out-of-Sample Dynamic Bias Correction:** Replace the in-sample mean bias subtraction with an out-of-sample rolling filter (e.g. 7-day or 14-day exponential moving average bias) to produce actionable, predictive residual buffers for live trading.
 
 ---
 

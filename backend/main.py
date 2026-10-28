@@ -260,8 +260,7 @@ def get_histogram_metrics(
         conn.close()
 
 
-# Mount the router both with prefix="/api" AND at root "/"
-# This ensures that whether Vercel passes "/api/..." or strips the "/api" prefix,
-# both paths match and work flawlessly.
+# Mount the router with prefix="/api".
+# Confirmed on live Vercel deployment: Vercel services mode routes `/api/(.*)` to the `api` service
+# without stripping the `/api` prefix, so FastAPI receives requests with `/api/...` intact.
 app.include_router(router, prefix="/api")
-app.include_router(router)
