@@ -29,7 +29,7 @@ The application pulls exclusively from the official **Elexon BMRS Insights API**
 
 * **Base URL:** `https://data.elexon.co.uk/bmrs/api/v1`
 * **Historical Scope:** Decision days throughout **January 2026**; Delivery days from **2 Jan 2026 to 1 Feb 2026** (31 delivery days = 1,488 half-hour settlement slots).
-* **Lookback:** Forecast fetching starts on **28 Dec 2025** so late-December forecasts are already in cache for the first decision on 1 Jan.
+* **Lookback:** Forecast fetching starts on **25 Dec 2025** so late-December forecasts are already in cache for the first decision on 1 Jan.
 * **Timestamps:** ISO 8601 UTC. In January, UK local time is GMT (UTC+0).
 
 ---
